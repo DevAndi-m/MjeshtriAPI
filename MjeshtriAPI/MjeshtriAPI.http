@@ -1,0 +1,6 @@
+@MjeshtriAPI_HostAddress = http://localhost:5142
+
+GET {{MjeshtriAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
