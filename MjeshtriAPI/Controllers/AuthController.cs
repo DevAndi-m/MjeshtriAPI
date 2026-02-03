@@ -25,14 +25,22 @@ namespace MjeshtriAPI.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
-            // 1. Check if user exists
+            // Check if user exists
             if (_context.Users.Any(u => u.Email == dto.Email))
                 return BadRequest("Email already registered.");
 
-            // 2. Hash Password
+            // check password length
+            if (dto.Password.Length < 8) 
+                return BadRequest("Password must be at least 8 characters long.");
+
+            // check if password has at least one digit and one letter
+            if (!dto.Password.Any(char.IsDigit) || !dto.Password.Any(char.IsLetter))
+                return BadRequest("Password must contain at least one letter and one digit.");
+
+            // Hash Password
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
-            // 3. Create User
+            // Create User
             var user = new User
             {
                 FullName = dto.FullName,
