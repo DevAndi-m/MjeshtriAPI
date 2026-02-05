@@ -19,6 +19,8 @@ namespace MjeshtriAPI.Models
         [Required]
         public string Role { get; set; } = "User";
 
+        public string ProfilePictureUrl { get; set; } = "https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg";
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     }

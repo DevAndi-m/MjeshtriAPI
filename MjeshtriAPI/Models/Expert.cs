@@ -16,12 +16,11 @@ namespace MjeshtriAPI.Models
         public string Category { get; set; } = string.Empty; 
         public decimal HourlyFee { get; set; }
         public string Bio { get; set; } = string.Empty;
-
         public int JobsTaken { get; set; } = 0;
         public double AverageRating { get; set; } = 0.0;
         public bool IsPublic { get; set; } = true;
 
-        // For simplicity in a 6-day sprint, we store requirements as a string
+        // store requirements as a string
         // You can split these by a comma in the frontend
         public string Requirements { get; set; } = string.Empty;
     }
