@@ -7,13 +7,15 @@ namespace MjeshtriAPI.Models
         [Key]
         public int Id { get; set; }
 
-        public int ClientId { get; set; } // The User who is hiring
-        public int ExpertId { get; set; } // The Expert being hired
+        public int ClientId { get; set; } 
+        public int ExpertId { get; set; } 
 
         [Required]
         public string Description { get; set; } = string.Empty;
 
-        // Statuses: "Pending", "Accepted", "Refused", "Finished"
+        // Statuses: "Pending", "Accepted", "Canceled", "Finished"
+
+        [Required]
         public string Status { get; set; } = "Pending";
 
         public DateTime RequestedAt { get; set; } = DateTime.UtcNow;

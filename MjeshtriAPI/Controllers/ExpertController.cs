@@ -81,7 +81,8 @@ namespace MjeshtriAPI.Controllers
                 e.HourlyFee,
                 e.AverageRating,
                 e.Requirements,
-                e.Bio
+                e.Bio,
+                e.JobsTaken
             }).FirstOrDefaultAsync();
 
             if (expert == null)
