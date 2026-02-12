@@ -7,6 +7,9 @@ namespace MjeshtriAPI.Models
         [Key]
         public int Id { get; set; }
 
+        public User Client { get; set; }
+        public User Expert { get; set; }
+
         public int ClientId { get; set; } 
         public int ExpertId { get; set; } 
 

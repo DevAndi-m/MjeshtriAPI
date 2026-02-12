@@ -178,5 +178,93 @@ namespace MjeshtriAPI.Controllers
 
             return Ok(new { Message = "Booking created successfully", bookingId = booking.Id });
         }
+
+        [HttpGet("my-bookings")]
+        public async Task<IActionResult> GetUserBookings()
+        {
+            var userIdClaim = this.User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+
+            int currentUserId = int.Parse(userIdClaim);
+
+            // If the logged-in user is an Expert, get their Expert.Id
+            var expertRecord = await _context.Experts.FirstOrDefaultAsync(e => e.UserId == currentUserId);
+
+            List<Booking> bookings;
+            if (expertRecord != null)
+            {
+                // Show bookings where the user is either the client (by user id) or the provider (by Expert.Id)
+                bookings = await _context.Bookings
+                    .Where(b => b.ClientId == currentUserId || b.ExpertId == expertRecord.Id)
+                    .OrderByDescending(b => b.RequestedAt)
+                    .ToListAsync();
+            }
+            else
+            {
+                // Regular user (client) — show bookings where they are the client
+                bookings = await _context.Bookings
+                    .Where(b => b.ClientId == currentUserId)
+                    .OrderByDescending(b => b.RequestedAt)
+                    .ToListAsync();
+            }
+
+            var result = new List<object>();
+
+            foreach (var booking in bookings)
+            {
+                var expert = await _context.Experts.FindAsync(booking.ExpertId);
+                var expertUser = expert != null ? await _context.Users.FindAsync(expert.UserId) : null;
+                var clientUser = await _context.Users.FindAsync(booking.ClientId);
+
+                result.Add(new
+                {
+                    booking.Id,
+                    booking.ExpertId,
+                    booking.ClientId,
+                    booking.Description,
+                    booking.Status,
+                    booking.RequestedAt,
+                    booking.Rating,
+                    booking.ReviewComment,
+                    ExpertName = !string.IsNullOrEmpty(expertUser?.FullName) ? expertUser.FullName : $"Expert #{expert?.UserId ?? booking.ExpertId}",
+                    ClientName = !string.IsNullOrEmpty(clientUser?.FullName) ? clientUser.FullName : $"Client #{booking.ClientId}",
+                    Role = booking.ClientId == currentUserId ? "Client" : "Expert"
+                });
+            }
+
+            return Ok(result);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> CancelBooking(int id)
+        {
+            // 1. Extract the current user ID from claims
+            var userIdClaim = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+
+            int currentUserId = int.Parse(userIdClaim);
+
+            // 2. Find the booking
+            var booking = await _context.Bookings.FindAsync(id);
+            if (booking == null) return NotFound("Booking not found.");
+
+            // 3. Check if user is the client who made the booking
+            if (booking.ClientId != currentUserId)
+            {
+                return Forbid("You can only cancel your own bookings.");
+            }
+
+            // 4. Check if status is Pending
+            if (booking.Status != "Pending")
+            {
+                return BadRequest($"You can only cancel bookings with Pending status. Current status: {booking.Status}");
+            }
+
+            // 5. Delete the booking
+            _context.Bookings.Remove(booking);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Booking cancelled and deleted successfully." });
+        }
     }
 }
