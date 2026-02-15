@@ -69,6 +69,7 @@ namespace MjeshtriAPI.Controllers
         }
 
         // get single expert.
+        // get single expert.
         [HttpGet("{id}")]
         public async Task<IActionResult> getExpertById(int id)
         {
@@ -77,17 +78,16 @@ namespace MjeshtriAPI.Controllers
                 e.Id,
                 e.User.FullName,
                 e.User.ProfilePictureUrl,
+                e.User.Bio,
                 e.Category,
                 e.HourlyFee,
                 e.AverageRating,
                 e.Requirements,
-                e.Bio,
                 e.JobsTaken
             }).FirstOrDefaultAsync();
 
             if (expert == null)
-                return NotFound(new {message = "Expert not found"});
-
+                return NotFound(new { message = "Expert not found" });
 
             return Ok(expert);
         }

@@ -24,6 +24,8 @@ namespace MjeshtriAPI.Controllers
         public async Task<IActionResult> UpdateBookingStatus(int id, [FromBody] string newStatus)
         {
             var userIdClaim = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+
             int currentUserId = int.Parse(userIdClaim);
 
             var booking = await _context.Bookings.FindAsync(id);
@@ -67,19 +69,15 @@ namespace MjeshtriAPI.Controllers
             return Ok(new { message = $"Booking status updated to {newStatus}." });
         }
 
-
         [HttpPatch("review")]
         public async Task<IActionResult> SubmitReview([FromBody] AddReviewDto dto)
         {
-            // 1. Get Logged-in User ID
             var userIdClaim = User.FindFirst("userId")?.Value;
-
             if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
 
             int currentUserId = int.Parse(userIdClaim);
 
             var booking = await _context.Bookings.FindAsync(dto.BookingId);
-
             if (booking == null) return NotFound("Booking not found.");
 
             if (booking.ClientId != currentUserId)
@@ -102,19 +100,25 @@ namespace MjeshtriAPI.Controllers
                 return BadRequest("Rating must be between 1 and 10.");
             }
 
-            if (dto.ReviewComment.Length > 100)
+            if (!string.IsNullOrEmpty(dto.ReviewComment) && dto.ReviewComment.Length > 100)
             {
                 return BadRequest("Review comment cannot exceed 100 characters.");
             }
 
             booking.Rating = dto.Rating;
-            booking.ReviewComment = dto.ReviewComment;
+            booking.ReviewComment = dto.ReviewComment ?? string.Empty;
 
-            await UpdateExpertAverageRating(booking.ExpertId);
-
+            // Persist the booking update first so the rating exists in the DB for aggregation
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Review submitted successfully!" });
+            // Recalculate and persist the expert's average rating based on saved ratings
+            await UpdateExpertAverageRating(booking.ExpertId);
+            await _context.SaveChangesAsync();
+
+            var expert = await _context.Experts.FindAsync(booking.ExpertId);
+            var avg = expert?.AverageRating;
+
+            return Ok(new { message = "Review submitted successfully!", averageRating = avg, expertId = booking.ExpertId });
         }
 
         private async Task UpdateExpertAverageRating(int expertId)
@@ -124,14 +128,56 @@ namespace MjeshtriAPI.Controllers
             {
                 var ratings = await _context.Bookings
                     .Where(b => b.ExpertId == expertId && b.Rating != null)
-                    .Select(b => b.Rating.Value)
+                    .Select(b => (double?)b.Rating)
                     .ToListAsync();
 
-                if (ratings.Any())
+                var numericRatings = ratings.Where(r => r.HasValue).Select(r => r.Value).ToList();
+
+                if (numericRatings.Any())
                 {
-                    expert.AverageRating = Math.Round(ratings.Average(), 1);
+                    expert.AverageRating = Math.Round(numericRatings.Average(), 1);
+                }
+                else
+                {
+                    expert.AverageRating = 0;
                 }
             }
+        }
+
+        // Public endpoint to fetch expert reviews (ratings + comments)
+        [AllowAnonymous]
+        [HttpGet("expert-reviews/{expertId}")]
+        public async Task<IActionResult> GetExpertReviews(int expertId)
+        {
+            var reviews = await _context.Bookings
+                .Where(b => b.ExpertId == expertId && b.Rating != null)
+                .OrderByDescending(b => b.RequestedAt)
+                .Select(b => new
+                {
+                    bookingId = b.Id,
+                    clientId = b.ClientId,
+                    rating = b.Rating,
+                    reviewComment = b.ReviewComment,
+                    requestedAt = b.RequestedAt
+                })
+                .ToListAsync();
+
+            var result = new List<object>();
+            foreach (var r in reviews)
+            {
+                var clientUser = await _context.Users.FindAsync((int)r.clientId);
+                result.Add(new
+                {
+                    bookingId = r.bookingId,
+                    clientId = r.clientId,
+                    clientName = clientUser != null ? clientUser.FullName : null,
+                    rating = r.rating,
+                    reviewComment = r.reviewComment,
+                    requestedAt = r.requestedAt
+                });
+            }
+
+            return Ok(result);
         }
 
         [HttpPost("hire")]
@@ -158,7 +204,10 @@ namespace MjeshtriAPI.Controllers
                 return BadRequest("You cannot hire yourself as an expert");
             }
 
-            var existingBooking = await _context.Bookings.Where(b => b.ClientId == clientId && b.ExpertId == expert.UserId).Where(b => b.Status == "Pending" || b.Status == "Accepted").FirstOrDefaultAsync();
+            var existingBooking = await _context.Bookings
+                .Where(b => b.ClientId == clientId && b.ExpertId == expert.UserId)
+                .Where(b => b.Status == "Pending" || b.Status == "Accepted")
+                .FirstOrDefaultAsync();
 
             if (existingBooking != null)
             {
@@ -178,7 +227,6 @@ namespace MjeshtriAPI.Controllers
 
             return Ok(new { Message = "Booking created successfully", bookingId = booking.Id });
         }
-
         [HttpGet("my-bookings")]
         public async Task<IActionResult> GetUserBookings()
         {
@@ -187,13 +235,11 @@ namespace MjeshtriAPI.Controllers
 
             int currentUserId = int.Parse(userIdClaim);
 
-            // If the logged-in user is an Expert, get their Expert.Id
             var expertRecord = await _context.Experts.FirstOrDefaultAsync(e => e.UserId == currentUserId);
 
             List<Booking> bookings;
             if (expertRecord != null)
             {
-                // Show bookings where the user is either the client (by user id) or the provider (by Expert.Id)
                 bookings = await _context.Bookings
                     .Where(b => b.ClientId == currentUserId || b.ExpertId == expertRecord.Id)
                     .OrderByDescending(b => b.RequestedAt)
@@ -201,7 +247,6 @@ namespace MjeshtriAPI.Controllers
             }
             else
             {
-                // Regular user (client) — show bookings where they are the client
                 bookings = await _context.Bookings
                     .Where(b => b.ClientId == currentUserId)
                     .OrderByDescending(b => b.RequestedAt)
@@ -228,6 +273,8 @@ namespace MjeshtriAPI.Controllers
                     booking.ReviewComment,
                     ExpertName = !string.IsNullOrEmpty(expertUser?.FullName) ? expertUser.FullName : $"Expert #{expert?.UserId ?? booking.ExpertId}",
                     ClientName = !string.IsNullOrEmpty(clientUser?.FullName) ? clientUser.FullName : $"Client #{booking.ClientId}",
+                    ExpertBio = expertUser?.Bio,
+                    ClientBio = clientUser?.Bio,
                     Role = booking.ClientId == currentUserId ? "Client" : "Expert"
                 });
             }
@@ -238,29 +285,24 @@ namespace MjeshtriAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> CancelBooking(int id)
         {
-            // 1. Extract the current user ID from claims
             var userIdClaim = User.FindFirst("userId")?.Value;
             if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
 
             int currentUserId = int.Parse(userIdClaim);
 
-            // 2. Find the booking
             var booking = await _context.Bookings.FindAsync(id);
             if (booking == null) return NotFound("Booking not found.");
 
-            // 3. Check if user is the client who made the booking
             if (booking.ClientId != currentUserId)
             {
                 return Forbid("You can only cancel your own bookings.");
             }
 
-            // 4. Check if status is Pending
             if (booking.Status != "Pending")
             {
                 return BadRequest($"You can only cancel bookings with Pending status. Current status: {booking.Status}");
             }
 
-            // 5. Delete the booking
             _context.Bookings.Remove(booking);
             await _context.SaveChangesAsync();
 

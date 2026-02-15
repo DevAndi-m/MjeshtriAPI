@@ -55,6 +55,10 @@ namespace MjeshtriAPI.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("ExpertId");
+
                     b.ToTable("Bookings");
                 });
 
@@ -134,6 +138,9 @@ namespace MjeshtriAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Bio")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -160,6 +167,25 @@ namespace MjeshtriAPI.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("MjeshtriAPI.Models.Booking", b =>
+                {
+                    b.HasOne("MjeshtriAPI.Models.User", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MjeshtriAPI.Models.User", "Expert")
+                        .WithMany()
+                        .HasForeignKey("ExpertId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Expert");
                 });
 
             modelBuilder.Entity("MjeshtriAPI.Models.Expert", b =>
