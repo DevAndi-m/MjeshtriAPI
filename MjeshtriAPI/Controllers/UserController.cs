@@ -135,5 +135,114 @@ namespace MjeshtriAPI.Controllers
                 return StatusCode(500, new { message = "An error occurred while updating the profile.", error = ex.Message });
             }
         }
+
+        // GET all users (admin only)
+        [HttpGet("all")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            if (string.IsNullOrEmpty(roleClaim) || !roleClaim.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
+
+            var users = await _context.Users
+                .Select(u => new
+                {
+                    u.Id,
+                    u.FullName,
+                    u.Email,
+                    u.Role,
+                    u.ProfilePictureUrl,
+                    u.Bio,
+                    u.CreatedAt
+                })
+                .ToListAsync();
+
+            return Ok(users);
+        }
+
+        // DELETE user by id (admin only)
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteUser(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound("User not found.");
+
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "User deleted successfully." });
+        }
+
+        // UPDATE user by id (admin only)
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserDto dto)
+        {
+            var currentRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            if (string.IsNullOrEmpty(currentRole) || !currentRole.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
+
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound("User not found.");
+
+            if (!string.IsNullOrEmpty(dto.FullName)) user.FullName = dto.FullName;
+            if (!string.IsNullOrEmpty(dto.Bio)) user.Bio = dto.Bio;
+            if (!string.IsNullOrEmpty(dto.ProfilePictureUrl)) user.ProfilePictureUrl = dto.ProfilePictureUrl;
+            if (!string.IsNullOrEmpty(dto.Email)) user.Email = dto.Email;
+            if (!string.IsNullOrEmpty(dto.Role)) user.Role = dto.Role;
+
+            if (dto.Role == "Expert" || dto.Role == "User" || dto.Role == "Admin")
+            {
+                user.Role = dto.Role;
+            }
+
+            // Manage expert details for experts
+            if (user.Role == "Expert")
+            {
+                var expert = await _context.Experts.FirstOrDefaultAsync(e => e.UserId == id);
+                if (expert == null)
+                {
+                    expert = new Models.Expert
+                    {
+                        UserId = id,
+                        Category = dto.Category ?? "",
+                        HourlyFee = dto.HourlyFee ?? 0,
+                        Requirements = dto.Requirements ?? ""
+                    };
+                    _context.Experts.Add(expert);
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(dto.Category)) expert.Category = dto.Category;
+                    if (dto.HourlyFee.HasValue) expert.HourlyFee = dto.HourlyFee.Value;
+                    if (!string.IsNullOrEmpty(dto.Requirements)) expert.Requirements = dto.Requirements;
+                }
+            }
+
+            if (dto.Role != "Expert")
+            {
+                var expert = await _context.Experts.FirstOrDefaultAsync(e => e.UserId == id);
+                if (expert != null)
+                {
+                    _context.Experts.Remove(expert);
+                }
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "User updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while updating the user.", error = ex.Message });
+            }
+        }
     }
 }
