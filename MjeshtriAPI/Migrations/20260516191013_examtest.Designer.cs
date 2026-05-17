@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MjeshtriAPI.Data;
 
@@ -11,9 +12,11 @@ using MjeshtriAPI.Data;
 namespace MjeshtriAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260516191013_examtest")]
+    partial class examtest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -60,53 +63,6 @@ namespace MjeshtriAPI.Migrations
                     b.HasIndex("ExpertId");
 
                     b.ToTable("Bookings");
-                });
-
-            modelBuilder.Entity("MjeshtriAPI.Models.Contract", b =>
-                {
-                    b.Property<int>("ContractId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ContractId"));
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("EmployeeId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("ContractId");
-
-                    b.HasIndex("EmployeeId");
-
-                    b.ToTable("Contracts");
-                });
-
-            modelBuilder.Entity("MjeshtriAPI.Models.Employee", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Surname")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Employees");
                 });
 
             modelBuilder.Entity("MjeshtriAPI.Models.Expert", b =>
@@ -284,17 +240,6 @@ namespace MjeshtriAPI.Migrations
                     b.Navigation("Expert");
                 });
 
-            modelBuilder.Entity("MjeshtriAPI.Models.Contract", b =>
-                {
-                    b.HasOne("MjeshtriAPI.Models.Employee", "Employee")
-                        .WithMany("Contracts")
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Employee");
-                });
-
             modelBuilder.Entity("MjeshtriAPI.Models.Expert", b =>
                 {
                     b.HasOne("MjeshtriAPI.Models.User", "User")
@@ -315,11 +260,6 @@ namespace MjeshtriAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("Planet");
-                });
-
-            modelBuilder.Entity("MjeshtriAPI.Models.Employee", b =>
-                {
-                    b.Navigation("Contracts");
                 });
 
             modelBuilder.Entity("MjeshtriAPI.Models.Planet", b =>
