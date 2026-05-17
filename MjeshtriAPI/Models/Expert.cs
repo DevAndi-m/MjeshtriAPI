@@ -10,6 +10,8 @@ namespace MjeshtriAPI.Models
 
         // Links back to the User table
         public int UserId { get; set; }
+
+
         [ForeignKey("UserId")]
         public User? User { get; set; }
 
