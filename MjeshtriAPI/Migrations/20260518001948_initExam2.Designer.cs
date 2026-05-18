@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MjeshtriAPI.Data;
 
@@ -11,9 +12,11 @@ using MjeshtriAPI.Data;
 namespace MjeshtriAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260518001948_initExam2")]
+    partial class initExam2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -107,53 +110,6 @@ namespace MjeshtriAPI.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Employees");
-                });
-
-            modelBuilder.Entity("MjeshtriAPI.Models.Exam3.Lecture3", b =>
-                {
-                    b.Property<int>("LectureId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LectureId"));
-
-                    b.Property<string>("LectureName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("LecturerId")
-                        .HasColumnType("int");
-
-                    b.HasKey("LectureId");
-
-                    b.HasIndex("LecturerId");
-
-                    b.ToTable("Lectures3");
-                });
-
-            modelBuilder.Entity("MjeshtriAPI.Models.Exam3.Lecturer3", b =>
-                {
-                    b.Property<int>("LecturerId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LecturerId"));
-
-                    b.Property<string>("Department")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LecturerName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("LecturerId");
-
-                    b.ToTable("Lecturers3");
                 });
 
             modelBuilder.Entity("MjeshtriAPI.Models.Expert", b =>
@@ -287,10 +243,15 @@ namespace MjeshtriAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("Planet2Id")
+                        .HasColumnType("int");
+
                     b.Property<int>("PlanetId")
                         .HasColumnType("int");
 
                     b.HasKey("SatelliteId");
+
+                    b.HasIndex("Planet2Id");
 
                     b.HasIndex("PlanetId");
 
@@ -391,17 +352,6 @@ namespace MjeshtriAPI.Migrations
                     b.Navigation("Employee");
                 });
 
-            modelBuilder.Entity("MjeshtriAPI.Models.Exam3.Lecture3", b =>
-                {
-                    b.HasOne("MjeshtriAPI.Models.Exam3.Lecturer3", "Lecturer")
-                        .WithMany("Lectures")
-                        .HasForeignKey("LecturerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Lecturer");
-                });
-
             modelBuilder.Entity("MjeshtriAPI.Models.Expert", b =>
                 {
                     b.HasOne("MjeshtriAPI.Models.User", "User")
@@ -415,6 +365,10 @@ namespace MjeshtriAPI.Migrations
 
             modelBuilder.Entity("MjeshtriAPI.Models.Satellite", b =>
                 {
+                    b.HasOne("MjeshtriAPI.Models.Planet2", null)
+                        .WithMany("Satellites")
+                        .HasForeignKey("Planet2Id");
+
                     b.HasOne("MjeshtriAPI.Models.Planet", "Planet")
                         .WithMany("Satellites")
                         .HasForeignKey("PlanetId")
@@ -426,8 +380,8 @@ namespace MjeshtriAPI.Migrations
 
             modelBuilder.Entity("MjeshtriAPI.Models.Satellite2", b =>
                 {
-                    b.HasOne("MjeshtriAPI.Models.Planet2", "Planet")
-                        .WithMany("Satellites")
+                    b.HasOne("MjeshtriAPI.Models.Planet", "Planet")
+                        .WithMany()
                         .HasForeignKey("PlanetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -438,11 +392,6 @@ namespace MjeshtriAPI.Migrations
             modelBuilder.Entity("MjeshtriAPI.Models.Exam1.Employee", b =>
                 {
                     b.Navigation("Contracts");
-                });
-
-            modelBuilder.Entity("MjeshtriAPI.Models.Exam3.Lecturer3", b =>
-                {
-                    b.Navigation("Lectures");
                 });
 
             modelBuilder.Entity("MjeshtriAPI.Models.Planet", b =>
